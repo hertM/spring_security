@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="cn.tl.maventest.mapper.UserMapper">
+
+    <!-- 查询用户的信息  -->
+    <select id="findByUsername" parameterType="String" resultType="cn.tl.maventest.domain.User">
+        select * from user_tb where username = #{username}
+    </select>
+
+
+    <!-- 根据用户的姓名 查询 用户的权限 -->
+    <select id="findPermissionByUsername" parameterType="string" resultType="permission">
+       SELECT ptb.* from user_tb u
+        INNER JOIN user_role_tb urt on u.userid = urt.userId
+        INNER JOIN role_per_tb rpt on rpt.roleId = urt.roleId
+        INNER JOIN permission_tb ptb on ptb.perId = rpt.perId
+        where u.username = #{username}
+
+    </select>
+
+</mapper>

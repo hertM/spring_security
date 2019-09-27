@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:jee="http://www.springframework.org/schema/jee" xmlns:tx="http://www.springframework.org/schema/tx"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:util="http://www.springframework.org/schema/util"
+       xmlns:task="http://www.springframework.org/schema/task"
+       xmlns:security="http://www.springframework.org/schema/security"
+       xsi:schemaLocation="http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.3.xsd      http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.3.xsd      http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.3.xsd      http://www.springframework.org/schema/jee http://www.springframework.org/schema/jee/spring-jee-4.3.xsd      http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.3.xsd      http://www.springframework.org/schema/util http://www.springframework.org/schema/util/spring-util-4.3.xsd      http://www.springframework.org/schema/task http://www.springframework.org/schema/task/spring-task-4.3.xsd http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security.xsd">
+
+
+    <!-- <security:http> spring 过滤器链的配置：
+        可以配置的行为有：
+        1）需要拦截什么资源
+        2）什么资源有什么角色权限
+        3）定义认证方式：httpbase方式，formlogin的方式（表单登录）
+        4）定义登录的页面，定义登录的请求地址，定义错误的处理方式
+     -->
+    <security:http>
+
+        <!--放行登录页面-->
+        <security:intercept-url pattern="/userlogin" access="permitAll()" />
+        <security:intercept-url pattern="/all/to" access="permitAll()" />
+
+        <security:intercept-url pattern="/yzm" access="permitAll()" />
+
+
+        <!-- 首页资源 不需要 进行认证 放开 -->
+        <security:intercept-url pattern="/all/hello" access="permitAll()"/>
+
+
+        <!-- 放行  js 下面的 所有资源 -->
+        <security:intercept-url pattern="/js/**" access="permitAll()"/>
+
+        <!-- 设置  访问权限 调用 hasAuthority 方法 将 权限 设置 进去 -->
+        <security:intercept-url pattern="/all/add" access="hasAuthority('ROLE_ADD')" />
+        <security:intercept-url pattern="/all/list" access="hasAuthority('ROLE_LIST')" />
+        <security:intercept-url pattern="/all/update" access="hasAuthority('ROLE_UPDATE')" />
+        <security:intercept-url pattern="/all/delete" access="hasAuthority('ROLE_DELETE')" />
+
+
+        <!-- 拦截所有的资源 -->
+        <security:intercept-url pattern="/**" access="isFullyAuthenticated()" />
+
+        <!-- 自定义 过滤器  FORM_LOGIN_FILTER  在用户 校验 之前  -->
+        <security:custom-filter ref="imageCodeAuthenticationFilter" before="FORM_LOGIN_FILTER" />
+
+
+        <!--<security:form-login login-page="/userlogin" authentication-failure-url="/userlogin?error=true" login-processing-url="securityLogin" authentication-success-handler-ref="myAuthenticationSuccessHandler" authentication-failure-handler-ref="authenticationFailureHandle" />-->
+        <security:form-login login-page="/userlogin" authentication-failure-url="/userlogin?error=true" authentication-success-handler-ref="myAuthenticationSuccessHandler" authentication-failure-handler-ref="authenticationFailureHandle" />
+
+
+        <!-- 配置 无权限的 错误处理界面 -->
+        <security:access-denied-handler error-page="/error" />
+
+        <!-- 注意此处 添加 关闭 csrf 否则 登录 会报错  -->
+        <security:csrf disabled="true" />
+
+
+        <!-- 加上 rememberMe 的功能 -->
+        <security:remember-me token-repository-ref="jdbcTokenRepository" token-validity-seconds="3600" />
+
+    </security:http>
+
+
+  <!--  <security:csrf disabled="true" />-->
+
+    <!-- <security:authentication-manager>  代表认证管理器
+      1）配置认证的信息（账户名，密码，当前用户权限）
+      可以选择写死的方式也可以选择配置数据库，信息从库里面获取的方式
+
+      -->
+    <security:authentication-manager>
+
+        <!-- 设置 固定 账户 信息 -->
+        <security:authentication-provider user-service-ref="myUserDetailService">
+
+            <!-- 使用加密方式 进行 密码加密和数据库里面的加密密码相比较 -->
+            <security:password-encoder ref="bCryptPasswordEncoder" />
+
+            <!--<security:user-service>
+                &lt;!&ndash; 包含  账户 和密码 &ndash;&gt;
+                <security:user name="test" password="123456" authorities="ROLE_ADD,ROLE_LIST"/>
+            </security:user-service>-->
+        </security:authentication-provider>
+    </security:authentication-manager>
+
+
+    <bean id="myUserDetailService"  class="cn.tl.maventest.security.MyUserDetailService"></bean>
+
+
+    <!-- 自定义 成功  的方式 引用 -->
+    <bean id="myAuthenticationSuccessHandler" class="cn.tl.maventest.security.MyAuthenticationSuccessHandler"></bean>
+
+    <!-- 加密 方式 -->
+    <bean id="bCryptPasswordEncoder" class="org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder" />
+
+    <bean id="authenticationFailureHandle" class="cn.tl.maventest.security.MyAuthenticationFailureHandle" />
+
+
+    <bean id="imageCodeAuthenticationFilter" class="cn.tl.maventest.security.ImageCodeAuthenticationFilter">
+        <!--注入 错误的处理器-->
+
+        <property name="authenticationFailureHandler" ref="authenticationFailureHandle"></property>
+
+    </bean>
+
+
+    <!-- 用来 使 rememberMe 功能 往数据库里面存放东西 -->
+    <bean id="jdbcTokenRepository" class="org.springframework.security.web.authentication.rememberme.JdbcTokenRepositoryImpl">
+        <!-- 此处的 数据库 引用的是  spring配置文件里面的 数据库 -->
+        <property name="dataSource" ref="dataSource"></property>
+
+        <!-- 在启动的时候 创建 对应 的表 只在第一次 启动的 时候 添加 -->
+       <!-- <property name="createTableOnStartup" value="true"></property>-->
+
+    </bean>
+
+
+</beans>
